@@ -7,11 +7,12 @@
 
 | Task    | Status      | Priority |
 |---------|-------------|----------|
+| Python language support | Partial | High |
+| Add command | Partial | High |
 | Build command   | Not Started | High |
-| Update command | Not Started | High |
-| Install command| Not Started | High |
-| Python language support | Not Started | Medium |
-| Proper error handling | Partial Implementation | Medium |
+| Update command | Not Started | Medium |
+| Install command| Partial | Medium |
+| Proper error handling | Partial | Medium |
 | Search command | Complete        | High |
 | Info command   | Complete        | High |
 
@@ -25,4 +26,4 @@
 | Lua language support              | Not Started |
 | Bash language support             | Not Started |
 | Branch command                    | Not Started |
-| Remove `alpm` and `pacman` dependency | Not Started |
+| Bedrock Linux support | Not Started |
