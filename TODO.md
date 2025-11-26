@@ -24,6 +24,5 @@
 | Task                              | Status      |
 |-----------------------------------|-------------|
 | Lua language support              | Not Started |
-| Bash language support             | Not Started |
 | Branch command                    | Not Started |
 | Bedrock Linux support | Not Started |
