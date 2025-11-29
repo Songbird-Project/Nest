@@ -14,7 +14,7 @@ import (
 
 type InfoCmd struct {
 	Name  string   `arg:"positional"`
-	Repos []string `arg:"--repos" help:"only search in the given repos"`
+	Repos []string `arg:"-r,--repos" help:"only search in the given repos"`
 }
 
 func PkgInfo(alpmHandle *alpm.Handle, args *InfoCmd) (string, error) {
