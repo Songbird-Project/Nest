@@ -1,7 +1,7 @@
 package core
 
 import (
-	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -10,35 +10,31 @@ type PrivilegeManager struct {
 }
 
 func (pm *PrivilegeManager) AuthenticateUser() error {
-	var cmd *exec.Cmd
+	cmd := exec.Command("sudo", "-v")
 
-	switch pm.AuthTool {
-	case "sudo":
-		cmd = exec.Command("sudo", "-v")
-	case "doas":
-		cmd = exec.Command("doas", "true")
-	case "run0":
-		cmd = exec.Command("run0", "true")
-	default:
-		return fmt.Errorf("unkown authentication tool: %s", pm.AuthTool)
-	}
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
 
 	return cmd.Run()
 }
 
 func (pm *PrivilegeManager) DeauthenticateUser() error {
-	var cmd *exec.Cmd
+	cmd := exec.Command("sudo", "-K")
 
-	switch pm.AuthTool {
-	case "sudo":
-		cmd = exec.Command("sudo", "-K")
-	case "doas":
-		cmd = exec.Command("doas", "-L")
-	case "run0":
-		cmd = exec.Command("pkill", "-f", "polkit.*agent")
-	default:
-		return fmt.Errorf("unkown authentication tool: %s", pm.AuthTool)
-	}
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+
+	return cmd.Run()
+}
+
+func (pm *PrivilegeManager) RunAsAuthUser(command string, args []string) error {
+	cmd := exec.Command("sudo", append([]string{"-E", command}, args...)...)
+
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
 
 	return cmd.Run()
 }

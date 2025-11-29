@@ -29,19 +29,18 @@ func SysBuild(args *BuildCmd) error {
 		return nil
 	} else {
 		pm.AuthenticateUser()
+		defer pm.DeauthenticateUser()
 
-		err := SysBuildAll(args)
+		err := SysBuildAll(args, pm)
 		if err != nil {
 			return err
 		}
-
-		pm.DeauthenticateUser()
 	}
 
 	return nil
 }
 
-func SysBuildAll(args *BuildCmd) error {
+func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 	nestRoot := os.Getenv("NEST_ROOT")
 	currGenRootID := os.Getenv("NEST_GEN_ROOT_ID")
 
@@ -58,7 +57,7 @@ func SysBuildAll(args *BuildCmd) error {
 	if args.Name != "" {
 		os.Setenv("NEST_GEN_ROOT", filepath.Join(nestRoot, args.Name))
 		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
-	} else if id, err := strconv.Atoi(currGenRootID); err != nil && currGenRootID != "" {
+	} else if id, err := strconv.Atoi(currGenRootID); err == nil && currGenRootID != "" {
 		os.Setenv("NEST_GEN_ROOT", filepath.Join(nestRoot, strconv.Itoa(id+1)+"/"))
 		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
 	} else {
@@ -66,14 +65,14 @@ func SysBuildAll(args *BuildCmd) error {
 		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
 	}
 
-	os.MkdirAll(os.Getenv("NEST_AUTOGEN"), 0777)
+	pm.RunAsAuthUser("mkdir", []string{"-p", os.Getenv("NEST_AUTOGEN")})
 
-	err := scripting.RunExternal("config", nestRoot)
+	err := scripting.RunExternalAsAuth("config", nestRoot, pm)
 	if err != nil {
 		return err
 	}
 
-	err = runBuildScript("preBuild")
+	err = runBuildScript("preBuild", pm)
 	if err != nil {
 		return err
 	}
@@ -83,13 +82,18 @@ func SysBuildAll(args *BuildCmd) error {
 		fmt.Println("Destructive Build")
 	}
 
+	err = runBuildScript("postBuild", pm)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func runBuildScript(stage string) error {
+func runBuildScript(stage string, pm core.PrivilegeManager) error {
 	autogen := os.Getenv("NEST_AUTOGEN")
 
-	err := scripting.RunExternal(stage, autogen)
+	err := scripting.RunExternalAsAuth(stage, autogen, pm)
 	if err != nil {
 		return err
 	}
