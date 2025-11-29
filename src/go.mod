@@ -1,12 +1,13 @@
 module github.com/Songbird-Project/nest
 
-go 1.25.3
+go 1.25.4
 
 require (
 	github.com/Jguer/go-alpm/v2 v2.2.2
 	github.com/alexflint/go-arg v1.6.0
 	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1
 	github.com/mikkeloscar/aur v0.0.0-20200113170522-1cb4e2949656
+	github.com/Songbird-Project/scsv v1.0.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
