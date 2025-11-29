@@ -26,13 +26,15 @@ func RunExternal(name string, dir string) error {
 		}
 	}
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s\n", output)
-		return err
-	}
+	if cmd != nil {
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("%s\n", output)
+			return err
+		}
 
-	fmt.Printf("%s", output)
+		fmt.Printf("%s", output)
+	}
 
 	return nil
 }
