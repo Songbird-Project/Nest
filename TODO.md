@@ -9,7 +9,7 @@
 |---------|-------------|----------|
 | Python language support | Partial | High |
 | Add command | Partial | High |
-| Build command   | Not Started | High |
+| Build command   | Partial | High |
 | Update command | Not Started | Medium |
 | Install command| Partial | Medium |
 | Proper error handling | Partial | Medium |
