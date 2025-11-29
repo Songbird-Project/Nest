@@ -21,6 +21,7 @@ var args struct {
 	Info    *subcommands.InfoCmd    `arg:"subcommand:info" help:"retrieve the info of a package"`
 	Add     *subcommands.AddCmd     `arg:"subcommand:add" help:"add the given package to the package list"`
 	Install *subcommands.InstallCmd `arg:"subcommand:install" help:"imperatively install the given package"`
+	Build   *subcommands.BuildCmd   `arg:"subcommand:build" help:"build the system and install declared packages"`
 }
 
 func main() {
@@ -76,5 +77,11 @@ func main() {
 		fmt.Println(pkgInfo)
 	case args.Add != nil:
 		return
+	case args.Build != nil:
+		err := subcommands.SysBuild(args.Build)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
 	}
 }
