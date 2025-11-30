@@ -3,8 +3,8 @@ package subcommands
 import (
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -82,8 +82,17 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 			return err
 		}
 
+		userList, homes, err := core.GetUsers()
+		if err != nil {
+			return err
+		}
+
+		var cfgUsers []string
+
 		for _, userCfg := range users {
-			if _, err := user.Lookup(userCfg.Username); err != nil {
+			cfgUsers = append(cfgUsers, userCfg.Username)
+
+			if !slices.Contains(userList, userCfg.Username) {
 				fmt.Println(infoStyle.Render(" - ", userCfg.Fullname))
 
 				args := []string{
@@ -93,7 +102,21 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 					userCfg.Fullname,
 					"-s",
 					userCfg.Shell,
-					"-m",
+				}
+
+				homeDirArchive := strings.TrimSuffix(userCfg.HomeDir, "/") + ".tar.zst"
+
+				existingHome, err := core.PathExists(
+					homeDirArchive,
+				)
+				if err != nil {
+					return err
+				}
+
+				if existingHome {
+					pm.RunAsAuthUser("tar", []string{"--zstd", "-xvf", homeDirArchive})
+				} else {
+					args = append(args, "-m")
 				}
 
 				if len(userCfg.Groups) > 0 {
@@ -105,6 +128,13 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 				if err := pm.RunAsAuthUser("useradd", args); err != nil {
 					return err
 				}
+			}
+		}
+
+		for idx, existingUser := range userList {
+			if !slices.Contains(cfgUsers, existingUser) {
+				pm.RunAsAuthUser("userdel", []string{existingUser})
+				archiveAndRemove(homes[idx], pm)
 			}
 		}
 	} else {
@@ -119,7 +149,7 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 
 	if currGenRoot != "" && !args.NoCompress {
 		fmt.Println(infoStyle.Render("Cleaning previous generation..."))
-		cleanOld(currGenRoot, pm)
+		archiveAndRemove(currGenRoot, pm)
 	}
 
 	return nil
@@ -163,14 +193,14 @@ func updateEnvironment(nestGenRoot string) error {
 	return os.Setenv("NEST_AUTOGEN", filepath.Join(nestGenRoot, "autogen"))
 }
 
-func cleanOld(currGenRoot string, pm core.PrivilegeManager) error {
-	archiveName := strings.TrimSuffix(currGenRoot, "/") + ".tar.zst"
+func archiveAndRemove(dir string, pm core.PrivilegeManager) error {
+	archiveName := strings.TrimSuffix(dir, "/") + ".tar.zst"
 
 	if err := pm.RunAsAuthUser("tar", []string{
 		"--zstd",
-		"-cf",
+		"-cvf",
 		archiveName,
-		currGenRoot,
+		dir,
 	}); err != nil {
 		return err
 	}
@@ -185,6 +215,6 @@ func cleanOld(currGenRoot string, pm core.PrivilegeManager) error {
 
 	return pm.RunAsAuthUser("rm", []string{
 		"-rf",
-		currGenRoot,
+		dir,
 	})
 }
