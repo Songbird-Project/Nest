@@ -3,6 +3,7 @@ package subcommands
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -74,6 +75,38 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 	}
 
 	if os.Getenv("NEST_DRY_RUN") == "" {
+		fmt.Println(infoStyle.Render("Adding users:"))
+
+		users, err := core.GetUserConfigs()
+		if err != nil {
+			return err
+		}
+
+		for _, userCfg := range users {
+			if _, err := user.Lookup(userCfg.Username); err != nil {
+				fmt.Println(infoStyle.Render(" - ", userCfg.Fullname))
+
+				args := []string{
+					"-d",
+					userCfg.HomeDir,
+					"-c",
+					userCfg.Fullname,
+					"-s",
+					userCfg.Shell,
+					"-m",
+				}
+
+				if len(userCfg.Groups) > 0 {
+					args = append(args, "-G", strings.Join(userCfg.Groups, ","))
+				}
+
+				args = append(args, userCfg.Username)
+
+				if err := pm.RunAsAuthUser("useradd", args); err != nil {
+					return err
+				}
+			}
+		}
 	} else {
 		fmt.Println("Destructive Build")
 	}

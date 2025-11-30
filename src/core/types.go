@@ -29,9 +29,15 @@ type NestConfig struct {
 	// Style
 	Color bool
 
-	// Generation
-	CompressOld bool
-
 	// Other (more categorisation with more options)
 	Repos []*Repo
+}
+
+type User struct {
+	Username   string
+	Fullname   string
+	HomeDir    string
+	ManageHome bool
+	Shell      string
+	Groups     []string
 }
