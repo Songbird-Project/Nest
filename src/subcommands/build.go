@@ -2,7 +2,6 @@ package subcommands
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,9 +27,7 @@ func SysBuild(args *BuildCmd) error {
 		authTool = "sudo"
 	}
 
-	pm := core.PrivilegeManager{
-		AuthTool: authTool,
-	}
+	pm := core.PrivilegeManager{}
 
 	if args.Home {
 		return nil
@@ -97,7 +94,7 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 
 	if currGenRoot != "" && !args.NoCompress {
 		fmt.Println(infoStyle.Render("Cleaning previous generation..."))
-		archiveAndRemove(currGenRoot, pm)
+		pm.ArchiveAndRemove(currGenRoot)
 	}
 
 	return nil
@@ -139,32 +136,6 @@ func updateEnvironment(nestGenRoot string) error {
 	}
 
 	return os.Setenv("NEST_AUTOGEN", filepath.Join(nestGenRoot, "autogen"))
-}
-
-func archiveAndRemove(dir string, pm core.PrivilegeManager) error {
-	archiveName := strings.TrimSuffix(dir, "/") + ".tar.zst"
-
-	if err := pm.RunAsAuthUser("tar", []string{
-		"--zstd",
-		"-cvf",
-		archiveName,
-		dir,
-	}); err != nil {
-		return err
-	}
-
-	if err := pm.RunAsAuthUser("tar", []string{
-		"--zstd",
-		"-tf",
-		archiveName,
-	}); err != nil {
-		return err
-	}
-
-	return pm.RunAsAuthUser("rm", []string{
-		"-rf",
-		dir,
-	})
 }
 
 func manageUsers(pm core.PrivilegeManager) error {
@@ -212,6 +183,7 @@ func manageUsers(pm core.PrivilegeManager) error {
 			if existingHome {
 				fmt.Printf(warnStyle.Italic(true).Render(" (restoring)\n"))
 				pm.RunAsAuthUser("tar", []string{"--zstd", "-xvf", homeDirArchive})
+				pm.RunAsAuthUser("rm", []string{"-rf", homeDirArchive})
 			} else {
 				fmt.Printf("\n")
 				args = append(args, "-m")
@@ -237,7 +209,7 @@ func manageUsers(pm core.PrivilegeManager) error {
 			fmt.Println(infoStyle.Render(" - ", existingUser))
 
 			pm.RunAsAuthUser("userdel", []string{existingUser})
-			archiveAndRemove(homes[idx], pm)
+			pm.ArchiveAndRemove(homes[idx])
 		}
 	}
 

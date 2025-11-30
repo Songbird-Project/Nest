@@ -3,11 +3,10 @@ package core
 import (
 	"os"
 	"os/exec"
+	"strings"
 )
 
-type PrivilegeManager struct {
-	AuthTool string
-}
+type PrivilegeManager struct{}
 
 func (pm *PrivilegeManager) AuthenticateUser() error {
 	cmd := exec.Command("sudo", "-v")
@@ -37,4 +36,30 @@ func (pm *PrivilegeManager) RunAsAuthUser(command string, args []string) error {
 	cmd.Stdin = os.Stdin
 
 	return cmd.Run()
+}
+
+func (pm *PrivilegeManager) ArchiveAndRemove(dir string) error {
+	archiveName := strings.TrimSuffix(dir, "/") + ".tar.zst"
+
+	if err := pm.RunAsAuthUser("tar", []string{
+		"--zstd",
+		"-cvf",
+		archiveName,
+		dir,
+	}); err != nil {
+		return err
+	}
+
+	if err := pm.RunAsAuthUser("tar", []string{
+		"--zstd",
+		"-tf",
+		archiveName,
+	}); err != nil {
+		return err
+	}
+
+	return pm.RunAsAuthUser("rm", []string{
+		"-rf",
+		dir,
+	})
 }
