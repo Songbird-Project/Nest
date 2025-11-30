@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Songbird-Project/nest/core"
 	"github.com/Songbird-Project/nest/scripting"
@@ -41,39 +42,24 @@ func SysBuild(args *BuildCmd) error {
 }
 
 func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
-	nestRoot := os.Getenv("NEST_ROOT")
+	nestRoot := fixRootPath(os.Getenv("NEST_ROOT"))
 	currGenRootID := os.Getenv("NEST_GEN_ROOT_ID")
+	currGenRoot := os.Getenv("NEST_GEN_ROOT")
 
-	if nestRoot == "" || nestRoot == "." {
-		nestRoot = "./"
-	} else if nestRoot[len(nestRoot)-1:] != "/" {
-		nestRoot += "/"
-	}
-
-	if len(args.Name) > 0 && args.Name[len(args.Name)-1:] != "/" {
-		args.Name += "/"
-	}
-
-	if args.Name != "" {
-		os.Setenv("NEST_GEN_ROOT", filepath.Join(nestRoot, args.Name))
-		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
-	} else if id, err := strconv.Atoi(currGenRootID); err == nil && currGenRootID != "" {
-		os.Setenv("NEST_GEN_ROOT", filepath.Join(nestRoot, strconv.Itoa(id+1)+"/"))
-		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
-	} else {
-		os.Setenv("NEST_GEN_ROOT", filepath.Join(nestRoot, "0/"))
-		os.Setenv("NEST_AUTOGEN", filepath.Join(os.Getenv("NEST_GEN_ROOT"), "autogen"))
-	}
-
-	pm.RunAsAuthUser("mkdir", []string{"-p", os.Getenv("NEST_AUTOGEN")})
-
-	err := scripting.RunExternalAsAuth("config", nestRoot, pm)
-	if err != nil {
+	genRoot := getGenRoot(nestRoot, args.Name, currGenRootID)
+	if err := updateEnvironment(genRoot); err != nil {
 		return err
 	}
 
-	err = runBuildScript("preBuild", pm)
-	if err != nil {
+	if err := pm.RunAsAuthUser("mkdir", []string{"-p", os.Getenv("NEST_AUTOGEN")}); err != nil {
+		return err
+	}
+
+	if err := scripting.RunExternalAsAuth("config", nestRoot, pm); err != nil {
+		return err
+	}
+
+	if err := runBuildScript("preBuild", pm); err != nil {
 		return err
 	}
 
@@ -82,9 +68,14 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		fmt.Println("Destructive Build")
 	}
 
-	err = runBuildScript("postBuild", pm)
-	if err != nil {
+	if err := runBuildScript("postBuild", pm); err != nil {
 		return err
+	}
+
+	if currGenRoot != "" {
+		if err := pm.RunAsAuthUser("zstd", []string{"-r", currGenRoot}); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -93,10 +84,37 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 func runBuildScript(stage string, pm core.PrivilegeManager) error {
 	autogen := os.Getenv("NEST_AUTOGEN")
 
-	err := scripting.RunExternalAsAuth(stage, autogen, pm)
-	if err != nil {
+	return scripting.RunExternalAsAuth(stage, autogen, pm)
+}
+
+func fixRootPath(nestRoot string) string {
+	if nestRoot == "" || nestRoot == "." {
+		nestRoot = "./"
+	}
+
+	if !strings.HasSuffix(nestRoot, "/") {
+		return nestRoot + "/"
+	}
+
+	return nestRoot
+}
+
+func getGenRoot(nestRoot string, name string, currGenRootID string) string {
+	if name != "" {
+		return filepath.Join(nestRoot, strings.TrimSuffix(name, "/")+"/")
+	}
+
+	if id, err := strconv.Atoi(currGenRootID); err == nil && currGenRootID != "" {
+		return filepath.Join(nestRoot, fmt.Sprintf("%d/", id+1))
+	}
+
+	return filepath.Join(nestRoot, "0/")
+}
+
+func updateEnvironment(nestGenRoot string) error {
+	if err := os.Setenv("NEST_GEN_ROOT", nestGenRoot); err != nil {
 		return err
 	}
 
-	return nil
+	return os.Setenv("NEST_AUTOGEN", filepath.Join(nestGenRoot, "autogen"))
 }
