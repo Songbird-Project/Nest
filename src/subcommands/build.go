@@ -50,6 +50,7 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 
 	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Blue)
 
+	fmt.Println()
 	fmt.Println(infoStyle.Render("Starting full system build..."))
 
 	genRoot := getGenRoot(nestRoot, args.Name, currGenRootID)
@@ -61,7 +62,6 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		return err
 	}
 
-	fmt.Println()
 	fmt.Println(infoStyle.Render("Generating system config..."))
 
 	if err := scripting.RunExternalAsAuth("config", nestRoot, pm); err != nil {
@@ -80,7 +80,6 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		fmt.Println("Destructive Build")
 	}
 
-	fmt.Println()
 	fmt.Println(infoStyle.Render("Running post-build script..."))
 
 	if err := runBuildScript("postBuild", pm); err != nil {
@@ -88,7 +87,6 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 	}
 
 	if currGenRoot != "" && !args.NoCompress {
-		fmt.Println()
 		fmt.Println(infoStyle.Render("Cleaning previous generation..."))
 		cleanOld(currGenRoot, pm)
 	}
