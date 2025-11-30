@@ -4,6 +4,8 @@ github.com/Morganamilo/go-pacmanconf v0.0.0-20210502114700-cff030e927a5 h1:TMscP
 github.com/Morganamilo/go-pacmanconf v0.0.0-20210502114700-cff030e927a5/go.mod h1:Hk55m330jNiwxRodIlMCvw5iEyoRUCIY64W1p9D+tHc=
 github.com/Songbird-Project/scsv v1.0.0 h1:Ys10aHjBd7/K/I549w6aZqHQRJRLpcaHaybytqnSuQk=
 github.com/Songbird-Project/scsv v1.0.0/go.mod h1:1gigjYZoXBO9FGhrxVotRUYDB93OZDZ34ClxbzAadsE=
+github.com/Songbird-Project/scsv v1.1.0 h1:Wo7QqyL1hB9HQ8emSmeJ/fYSCfW7UqfHsKv64m3xDNA=
+github.com/Songbird-Project/scsv v1.1.0/go.mod h1:1gigjYZoXBO9FGhrxVotRUYDB93OZDZ34ClxbzAadsE=
 github.com/alexflint/go-arg v1.6.0 h1:wPP9TwTPO54fUVQl4nZoxbFfKCcy5E6HBCumj1XVRSo=
 github.com/alexflint/go-arg v1.6.0/go.mod h1:A7vTJzvjoaSTypg4biM5uYNTkJ27SkNTArtYXnlqVO8=
 github.com/alexflint/go-scalar v1.2.0 h1:WR7JPKkeNpnYIOfHRa7ivM21aWAdHD0gEWHCx+WQBRw=
