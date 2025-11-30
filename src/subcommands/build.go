@@ -9,11 +9,13 @@ import (
 
 	"github.com/Songbird-Project/nest/core"
 	"github.com/Songbird-Project/nest/scripting"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 type BuildCmd struct {
-	Name string `arg:"-n,--name" help:"name the new build generation rather than using a number"`
-	Home bool   `arg:"-H,--home" help:"only rebuild managed home directories rather than the whole system"`
+	Name       string `arg:"-n,--name" help:"name the new build generation rather than using a number"`
+	NoCompress bool   `arg:"--no-compress" help:"do not compress the previous generation"`
+	Home       bool   `arg:"-H,--home" help:"only rebuild managed home directories rather than the whole system"`
 }
 
 func SysBuild(args *BuildCmd) error {
@@ -46,6 +48,10 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 	currGenRootID := os.Getenv("NEST_GEN_ROOT_ID")
 	currGenRoot := os.Getenv("NEST_GEN_ROOT")
 
+	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Blue)
+
+	fmt.Println(infoStyle.Render("Starting full system build..."))
+
 	genRoot := getGenRoot(nestRoot, args.Name, currGenRootID)
 	if err := updateEnvironment(genRoot); err != nil {
 		return err
@@ -55,9 +61,15 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		return err
 	}
 
+	fmt.Println()
+	fmt.Println(infoStyle.Render("Generating system config..."))
+
 	if err := scripting.RunExternalAsAuth("config", nestRoot, pm); err != nil {
 		return err
 	}
+
+	fmt.Println()
+	fmt.Println(infoStyle.Render("Running pre-build script..."))
 
 	if err := runBuildScript("preBuild", pm); err != nil {
 		return err
@@ -68,14 +80,17 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		fmt.Println("Destructive Build")
 	}
 
+	fmt.Println()
+	fmt.Println(infoStyle.Render("Running post-build script..."))
+
 	if err := runBuildScript("postBuild", pm); err != nil {
 		return err
 	}
 
-	if currGenRoot != "" {
-		if err := pm.RunAsAuthUser("zstd", []string{"-r", currGenRoot}); err != nil {
-			return err
-		}
+	if currGenRoot != "" && !args.NoCompress {
+		fmt.Println()
+		fmt.Println(infoStyle.Render("Cleaning previous generation..."))
+		cleanOld(currGenRoot, pm)
 	}
 
 	return nil
@@ -117,4 +132,30 @@ func updateEnvironment(nestGenRoot string) error {
 	}
 
 	return os.Setenv("NEST_AUTOGEN", filepath.Join(nestGenRoot, "autogen"))
+}
+
+func cleanOld(currGenRoot string, pm core.PrivilegeManager) error {
+	archiveName := strings.TrimSuffix(currGenRoot, "/") + ".tar.zst"
+
+	if err := pm.RunAsAuthUser("tar", []string{
+		"--zstd",
+		"-cf",
+		archiveName,
+		currGenRoot,
+	}); err != nil {
+		return err
+	}
+
+	if err := pm.RunAsAuthUser("tar", []string{
+		"--zstd",
+		"-tf",
+		archiveName,
+	}); err != nil {
+		return err
+	}
+
+	return pm.RunAsAuthUser("rm", []string{
+		"-rf",
+		currGenRoot,
+	})
 }
