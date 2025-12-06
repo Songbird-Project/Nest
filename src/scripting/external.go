@@ -61,5 +61,5 @@ func RunExternalAsAuth(name string, dir string, pm core.PrivilegeManager) error 
 		}
 	}
 
-	return pm.RunAsAuthUser(cmd, args)
+	return pm.RunAsAuthUser(cmd, args...)
 }
