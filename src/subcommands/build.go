@@ -56,7 +56,7 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 		return err
 	}
 
-	if err := pm.RunAsAuthUser("mkdir", []string{"-p", os.Getenv("NEST_AUTOGEN")}); err != nil {
+	if err := pm.RunAsAuthUser("mkdir", "-p", os.Getenv("NEST_AUTOGEN")); err != nil {
 		return err
 	}
 
@@ -76,6 +76,10 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 
 	if os.Getenv("NEST_DRY_RUN") == "" {
 		if err := manageUsers(pm); err != nil {
+			return err
+		}
+
+		if err := linkSystemConfigs(currGenRoot, pm); err != nil {
 			return err
 		}
 
@@ -182,8 +186,8 @@ func manageUsers(pm core.PrivilegeManager) error {
 
 			if existingHome {
 				fmt.Printf(warnStyle.Italic(true).Render(" (restoring)\n"))
-				pm.RunAsAuthUser("tar", []string{"--zstd", "-xvf", homeDirArchive})
-				pm.RunAsAuthUser("rm", []string{"-rf", homeDirArchive})
+				pm.RunAsAuthUser("tar", "--zstd", "-xvf", homeDirArchive)
+				pm.RunAsAuthUser("rm", "-rf", homeDirArchive)
 			} else {
 				fmt.Printf("\n")
 				args = append(args, "-m")
@@ -195,7 +199,7 @@ func manageUsers(pm core.PrivilegeManager) error {
 
 			args = append(args, userCfg.Username)
 
-			if err := pm.RunAsAuthUser("useradd", args); err != nil {
+			if err := pm.RunAsAuthUser("useradd", args...); err != nil {
 				return err
 			}
 		}
@@ -208,7 +212,7 @@ func manageUsers(pm core.PrivilegeManager) error {
 		if !slices.Contains(cfgUsers, existingUser) {
 			fmt.Println(infoStyle.Render(" - ", existingUser))
 
-			pm.RunAsAuthUser("userdel", []string{existingUser})
+			pm.RunAsAuthUser("userdel", existingUser)
 			pm.ArchiveAndRemove(homes[idx])
 		}
 	}
@@ -268,8 +272,42 @@ func installPkgs(pm core.PrivilegeManager) error {
 
 	args = append(args, pkgs...)
 
-	if err := pm.RunAsAuthUser("pacman", args); err != nil {
+	if err := pm.RunAsAuthUser("pacman", args...); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func linkSystemConfigs(currGenRoot string, pm core.PrivilegeManager) error {
+	binDir := filepath.Join(
+		strings.TrimSuffix(os.Getenv("NEST_GEN_ROOT"), "/")+"/",
+		"bin/*",
+	)
+	dbDir := filepath.Join(
+		strings.TrimSuffix(currGenRoot, "/")+"/",
+		"db",
+	)
+	oldDbDir := filepath.Join(
+		strings.TrimSuffix(currGenRoot, "/")+"/",
+		"db",
+	)
+
+	binFiles, err := filepath.Glob(binDir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range binFiles {
+		if err := pm.RunAsAuthUser("ln", "-sf", file, "/usr/bin/"+file); err != nil {
+			return err
+		}
+	}
+
+	installPkgs(pm)
+
+	if err := pm.RunAsAuthUser("cp", "-rf", oldDbDir, dbDir); err != nil {
+		return nil
 	}
 
 	return nil

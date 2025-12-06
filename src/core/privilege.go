@@ -28,7 +28,7 @@ func (pm *PrivilegeManager) DeauthenticateUser() error {
 	return cmd.Run()
 }
 
-func (pm *PrivilegeManager) RunAsAuthUser(command string, args []string) error {
+func (pm *PrivilegeManager) RunAsAuthUser(command string, args ...string) error {
 	cmd := exec.Command("sudo", append([]string{"-E", command}, args...)...)
 
 	cmd.Stderr = os.Stderr
@@ -41,25 +41,25 @@ func (pm *PrivilegeManager) RunAsAuthUser(command string, args []string) error {
 func (pm *PrivilegeManager) ArchiveAndRemove(dir string) error {
 	archiveName := strings.TrimSuffix(dir, "/") + ".tar.zst"
 
-	if err := pm.RunAsAuthUser("tar", []string{
+	if err := pm.RunAsAuthUser("tar",
 		"--zstd",
 		"-cvf",
 		archiveName,
 		dir,
-	}); err != nil {
+	); err != nil {
 		return err
 	}
 
-	if err := pm.RunAsAuthUser("tar", []string{
+	if err := pm.RunAsAuthUser("tar",
 		"--zstd",
 		"-tf",
 		archiveName,
-	}); err != nil {
+	); err != nil {
 		return err
 	}
 
-	return pm.RunAsAuthUser("rm", []string{
+	return pm.RunAsAuthUser("rm",
 		"-rf",
 		dir,
-	})
+	)
 }
