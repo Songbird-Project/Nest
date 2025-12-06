@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/Songbird-Project/nest/core"
 	"github.com/Songbird-Project/nest/subcommands"
@@ -25,6 +26,15 @@ var args struct {
 }
 
 func main() {
+	pm := core.PrivilegeManager{}
+
+	go core.HandleSignal(
+		130,
+		func() error { fmt.Println(core.Error("-> interrupt received: exiting...")); return nil },
+		pm,
+		os.Interrupt, syscall.SIGINT, syscall.SIGTERM,
+	)
+
 	handler, err := core.AlpmInit()
 	if err != nil {
 		fmt.Printf("%s\n", err)
@@ -78,7 +88,7 @@ func main() {
 	case args.Add != nil:
 		return
 	case args.Build != nil:
-		err := subcommands.SysBuild(args.Build)
+		err := subcommands.SysBuild(args.Build, pm)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)

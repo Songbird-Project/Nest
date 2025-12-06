@@ -21,13 +21,11 @@ type BuildCmd struct {
 	Home               bool   `arg:"-H,--home" help:"only rebuild managed home directories rather than the whole system"`
 }
 
-func SysBuild(args *BuildCmd) error {
+func SysBuild(args *BuildCmd, pm core.PrivilegeManager) error {
 	authTool := os.Getenv("NEST_AUTH")
 	if authTool == "" {
 		authTool = "sudo"
 	}
-
-	pm := core.PrivilegeManager{}
 
 	if args.Home {
 		return nil

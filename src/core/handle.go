@@ -1,7 +1,11 @@
 package core
 
 import (
+	"fmt"
 	"image/color"
+	"os"
+	"os/exec"
+	"os/signal"
 	"sort"
 	"strings"
 
@@ -84,4 +88,40 @@ func SortRepos(organisedPkgs map[string][]Package) []string {
 	result = append(result, remainingRepos...)
 
 	return result
+}
+
+func HandleSignal(
+	exit int,
+	action func() error,
+	pm PrivilegeManager,
+	signalTypes ...os.Signal,
+) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, signalTypes...)
+	done := make(chan bool, 1)
+
+	go func() {
+		<-sig
+		signal.Stop(sig)
+
+		if err := pm.DeauthenticateUser(); err != nil {
+			fmt.Printf("%s\n", err)
+		}
+
+		if action != nil {
+			if err := action(); err != nil {
+				fmt.Printf("%s\n", err)
+			}
+		}
+
+		cmd := exec.Command("pkill", "-9", "-f", "sudo -v")
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("%s\n", err)
+		}
+
+		done <- true
+	}()
+
+	<-done
+	os.Exit(exit)
 }
