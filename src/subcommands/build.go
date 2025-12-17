@@ -18,7 +18,7 @@ type BuildCmd struct {
 	Name               string `arg:"-n,--name" help:"name the new build generation rather than using a number"`
 	NoCompress         bool   `arg:"--no-compress" help:"do not compress the previous generation"`
 	IgnoreExistingHome bool   `arg:"-i,--ignore-existing-home" help:"do not restore the previous home directory of a previously existing user that has been recreated"`
-	Home               bool   `arg:"-H,--home" help:"only rebuild managed home directories rather than the whole system"`
+	Home               bool   `arg:"-H,--home" help:"only rebuild managed home directories"`
 }
 
 func SysBuild(args *BuildCmd, pm core.PrivilegeManager) error {
@@ -81,6 +81,7 @@ func SysBuildAll(args *BuildCmd, pm core.PrivilegeManager) error {
 			return err
 		}
 
+		fmt.Println(infoStyle.Render("Installing packages..."))
 		if err := installPkgs(pm); err != nil {
 			return err
 		}
@@ -278,6 +279,8 @@ func installPkgs(pm core.PrivilegeManager) error {
 }
 
 func linkSystemConfigs(currGenRoot string, pm core.PrivilegeManager) error {
+	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Blue)
+
 	binDir := filepath.Join(
 		strings.TrimSuffix(os.Getenv("NEST_GEN_ROOT"), "/")+"/",
 		"bin/*",
@@ -296,16 +299,27 @@ func linkSystemConfigs(currGenRoot string, pm core.PrivilegeManager) error {
 		return err
 	}
 
+	fmt.Println(infoStyle.Render("Linking installed packages..."))
 	for _, file := range binFiles {
 		if err := pm.RunAsAuthUser("ln", "-sf", file, "/usr/bin/"+file); err != nil {
 			return err
 		}
 	}
 
-	installPkgs(pm)
+	oldDbExists, err := core.PathExists(oldDbDir)
+	if err != nil {
+		return err
+	}
 
-	if err := pm.RunAsAuthUser("cp", "-rf", oldDbDir, dbDir); err != nil {
-		return nil
+	fmt.Println(infoStyle.Render("Copying old database files..."))
+	if oldDbExists {
+		if err := pm.RunAsAuthUser("cp", "-rf", oldDbDir, dbDir); err != nil {
+			return err
+		}
+	} else {
+		if err := pm.RunAsAuthUser("cp", "-rf", "/var/lib/pacman/", dbDir); err != nil {
+			return err
+		}
 	}
 
 	return nil
