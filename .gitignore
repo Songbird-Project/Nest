@@ -28,3 +28,6 @@ go.work.sum
 .env
 
 nest
+
+.zig-out
+.zig-cache
